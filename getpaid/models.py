@@ -39,7 +39,8 @@ class PaymentFactory(models.Model, AbstractMixin):
     generated dynamically with one additional field: ``order``
     """
     amount = models.DecimalField(_("amount"), decimal_places=4, max_digits=20)
-    commission_amount = models.DecimalField(_("commission_amount"), decimal_places=4, max_digits=20)
+    commission_amount = models.DecimalField(_("commission_amount"), decimal_places=4, max_digits=20, blank=True,
+                                            null=True)
     currency = models.CharField(_("currency"), max_length=3)
     status = models.CharField(_("status"), max_length=20, choices=PAYMENT_STATUS_CHOICES, default='new', db_index=True)
     backend = models.CharField(_("backend"), max_length=50)
