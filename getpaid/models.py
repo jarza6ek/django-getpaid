@@ -2,15 +2,16 @@ import sys
 from datetime import datetime
 
 from django.apps import apps
+from django.conf import settings
 from django.db import models
 from django.utils import six
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
-from django.utils.encoding import python_2_unicode_compatible
-from .abstract_mixin import AbstractMixin
+
 from getpaid import signals
+from .abstract_mixin import AbstractMixin
 from .utils import import_backend_modules
-from django.conf import settings
 
 if six.PY3:
     unicode = str
@@ -38,6 +39,7 @@ class PaymentFactory(models.Model, AbstractMixin):
     generated dynamically with one additional field: ``order``
     """
     amount = models.DecimalField(_("amount"), decimal_places=4, max_digits=20)
+    commission_amount = models.DecimalField(_("commission_amount"), decimal_places=4, max_digits=20)
     currency = models.CharField(_("currency"), max_length=3)
     status = models.CharField(_("status"), max_length=20, choices=PAYMENT_STATUS_CHOICES, default='new', db_index=True)
     backend = models.CharField(_("backend"), max_length=50)

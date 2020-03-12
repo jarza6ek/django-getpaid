@@ -80,18 +80,20 @@ class PaymentProcessor(PaymentProcessorBase):
             logger.error('Got message for non existing Payment, %s' % str(params))
             return u'PAYMENT ERR'
 
+        payment.external_id = params.get('operation_number', '')
+        payment.description = params.get('email', '')
+
         amount = params.get('operation_amount')
         currency = params.get('operation_currency')
+        commission_amount = params.get('operation_currency')
 
         if currency != payment.currency.upper():
             logger.error('Got message with wrong currency, %s' % str(params))
             return u'CURRENCY ERR'
 
-        payment.external_id = params.get('operation_number', '')
-        payment.description = params.get('email', '')
-
         if int(params['operation_status']) == DotpayTransactionStatus.FINISHED:
             payment.amount_paid = Decimal(amount)
+            payment.commission_amount = Decimal(commission_amount)
             payment.paid_on = datetime.datetime.utcnow().replace(tzinfo=utc)
             if payment.amount <= Decimal(amount):
                 # Amount is correct or it is overpaid
