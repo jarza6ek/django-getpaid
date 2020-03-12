@@ -21,11 +21,12 @@ logger = logging.getLogger('getpaid.backends.dotpay')
 
 
 class DotpayTransactionStatus:
-    STARTED = 1
-    FINISHED = 2
-    REJECTED = 3
-    REFUNDED = 4
-    RECLAMATION = 5
+    NEW = 'new'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    REJECTED = 'rejected'
+    PROCESSING_REALIZATION_WAITING = 'processing_realization_waiting'
+    PROCESSING_REALIZATION = 'processing_realization'
 
 
 class PaymentProcessor(PaymentProcessorBase):
@@ -85,13 +86,13 @@ class PaymentProcessor(PaymentProcessorBase):
 
         amount = params.get('operation_amount')
         currency = params.get('operation_currency')
-        commission_amount = params.get('operation_currency')
+        commission_amount = params.get('operation_commission_amount')
 
         if currency != payment.currency.upper():
             logger.error('Got message with wrong currency, %s' % str(params))
             return u'CURRENCY ERR'
 
-        if int(params['operation_status']) == DotpayTransactionStatus.FINISHED:
+        if params['operation_status'] == DotpayTransactionStatus.COMPLETED:
             payment.amount_paid = Decimal(amount)
             payment.commission_amount = Decimal(commission_amount)
             payment.paid_on = datetime.datetime.utcnow().replace(tzinfo=utc)
@@ -100,8 +101,15 @@ class PaymentProcessor(PaymentProcessorBase):
                 payment.change_status('paid')
             else:
                 payment.change_status('partially_paid')
-        elif int(params['operation_status']) in [DotpayTransactionStatus.REJECTED, DotpayTransactionStatus.RECLAMATION,
-                                         DotpayTransactionStatus.REFUNDED]:
+        elif params['operation_status'] == DotpayTransactionStatus.NEW:
+            payment.change_status('new')
+        elif params['operation_status'] in [DotpayTransactionStatus.PROCESSING,
+                                            DotpayTransactionStatus.PROCESSING_REALIZATION_WAITING,
+                                            DotpayTransactionStatus.PROCESSING_REALIZATION]:
+            payment.change_status('in_progress')
+        elif params['operation_status'] == DotpayTransactionStatus.REJECTED:
+            payment.change_status('cancelled')
+        else:
             payment.change_status('failed')
 
         return u'OK'
