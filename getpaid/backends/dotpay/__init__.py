@@ -38,7 +38,13 @@ class PaymentProcessor(PaymentProcessorBase):
     _ACCEPTED_LANGS = ('pl', 'en', 'de', 'it', 'fr', 'es', 'cs', 'ru', 'hu', 'ro')
     _GATEWAY_URL = 'https://ssl.dotpay.pl/t2/'
     _ONLINE_SIG_FIELDS = (
-        'id', 'control', 't_id', 'amount', 'email', 'service', 'code', 'username', 'password', 't_status')
+        'id', 'operation_number', 'operation_type', 'operation_status', 'operation_amount', 'operation_currency',
+        'operation_withdrawal_amount', 'operation_commission_amount', 'is_completed', 'operation_original_amount',
+        'operation_original_currency', 'operation_datetime', 'operation_related_number', 'control', 'description',
+        'email', 'p_info', 'p_email', 'credit_card_issuer_identification_number', 'credit_card_masked_number',
+        'credit_card_expiration_year', 'credit_card_expiration_month', 'credit_card_brand_codename',
+        'credit_card_brand_code', 'credit_card_unique_identifier', 'credit_card_id', 'channel', 'channel_country',
+        'geoip_country')
 
     @staticmethod
     def compute_sig(params, fields, PIN):
@@ -74,16 +80,17 @@ class PaymentProcessor(PaymentProcessorBase):
             logger.error('Got message for non existing Payment, %s' % str(params))
             return u'PAYMENT ERR'
 
-        amount, currency = params.get('orginal_amount', params['amount'] + ' PLN').split(' ')
+        amount = params.get('operation_amount')
+        currency = params.get('operation_currency')
 
         if currency != payment.currency.upper():
             logger.error('Got message with wrong currency, %s' % str(params))
             return u'CURRENCY ERR'
 
-        payment.external_id = params.get('t_id', '')
+        payment.external_id = params.get('operation_number', '')
         payment.description = params.get('email', '')
 
-        if int(params['t_status']) == DotpayTransactionStatus.FINISHED:
+        if int(params['operation_status']) == DotpayTransactionStatus.FINISHED:
             payment.amount_paid = Decimal(amount)
             payment.paid_on = datetime.datetime.utcnow().replace(tzinfo=utc)
             if payment.amount <= Decimal(amount):
@@ -91,7 +98,7 @@ class PaymentProcessor(PaymentProcessorBase):
                 payment.change_status('paid')
             else:
                 payment.change_status('partially_paid')
-        elif int(params['t_status']) in [DotpayTransactionStatus.REJECTED, DotpayTransactionStatus.RECLAMATION,
+        elif int(params['operation_status']) in [DotpayTransactionStatus.REJECTED, DotpayTransactionStatus.RECLAMATION,
                                          DotpayTransactionStatus.REFUNDED]:
             payment.change_status('failed')
 

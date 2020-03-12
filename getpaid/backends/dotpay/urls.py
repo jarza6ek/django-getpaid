@@ -1,7 +1,8 @@
 from django.conf.urls import url
 from django.views.decorators.csrf import csrf_exempt
-from getpaid.backends.dotpay import ReturnView
-from getpaid.backends.dotpay import OnlineView
+
+from getpaid.backends.dotpay.views import OnlineView
+from getpaid.backends.dotpay.views import ReturnView
 
 urlpatterns = [
     url(r'^online/$',
