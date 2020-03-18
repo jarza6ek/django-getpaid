@@ -4,7 +4,7 @@
 import datetime
 import hashlib
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
@@ -94,13 +94,20 @@ class PaymentProcessor(PaymentProcessorBase):
 
         if params['operation_status'] == DotpayTransactionStatus.COMPLETED:
             payment.amount_paid = Decimal(amount)
-            payment.commission_amount = Decimal(commission_amount)
+            try:
+                payment.commission_amount = Decimal(commission_amount)
+            except InvalidOperation:
+                logger.info('No commission amount information in message, %s' % str(params))
             payment.paid_on = datetime.datetime.utcnow().replace(tzinfo=utc)
-            if payment.amount <= Decimal(amount):
-                # Amount is correct or it is overpaid
-                payment.change_status('paid')
-            else:
-                payment.change_status('partially_paid')
+            try:
+                if payment.amount <= Decimal(amount):
+                    # Amount is correct or it is overpaid
+                    payment.change_status('paid')
+                else:
+                    payment.change_status('partially_paid')
+            except InvalidOperation:
+                logger.error('Got message with malformed amount value, %s' % str(params))
+                return u'AMOUNT ERR'
         elif params['operation_status'] == DotpayTransactionStatus.NEW:
             payment.change_status('new')
         elif params['operation_status'] in [DotpayTransactionStatus.PROCESSING,
